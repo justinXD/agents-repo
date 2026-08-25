@@ -1,0 +1,23 @@
+{
+  "name": "agents-repo",
+  "version": "1.0.0",
+  "description": "Repo para aprender a crear agentes con TS y Python",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/justinXD/agents-repo.git"
+  },
+  "author": "",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/justinXD/agents-repo/issues"
+  },
+  "homepage": "https://github.com/justinXD/agents-repo#readme",
+  "dependencies": {
+    "@strands-agents/sdk": "^1.14.0",
+    "zod": "^4.4.3"
+  }
+}
