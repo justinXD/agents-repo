@@ -1,6 +1,7 @@
 {
   "name": "agents-repo",
   "version": "1.0.0",
+  "type": "module",
   "description": "Repo para aprender a crear agentes con TS y Python",
   "main": "index.js",
   "scripts": {
