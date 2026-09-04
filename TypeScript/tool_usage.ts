@@ -1,10 +1,6 @@
 import { Agent, tool } from "@strands-agents/sdk";
 import { z } from "zod";
 
-interface CurrencyTypes {
-  "USD": () => number;
-  "MXN": () => number;
-}
 
 const calculadora = tool({
   name: "calculadora",
@@ -14,10 +10,16 @@ const calculadora = tool({
   }),
   callback: async ({ expresion }) => {
     try {
+      if (!/^[\d\s+\-*/().]+$/.test(expresion)) {
+        return `Error: la expresión contiene caracteres no permitidos.`;
+      }
       const resultado = Function(`"use strict"; return (${expresion})`)();
+      if (typeof resultado !== "number" || isNaN(resultado) || !isFinite(resultado)) {
+        return `Error: la expresión no es válida, posible valor nulo o infinito.`;
+      }
       return `El resultado es ${resultado}`;
     } catch (e) {
-      return `Error al evaluar: ${e}`;
+      return `Error al evaluar la expresión: ${e instanceof Error ? e.message : String(e)}`;
     }
   },
 });
@@ -29,8 +31,18 @@ const sumar = tool({
     numeros: z.array(z.number()),
   }),
   callback: async ({ numeros }) => {
-    const resultado = numeros.reduce((acc, curr) => acc + curr, 0);
-    return `El resultado de la suma es ${resultado}`;
+    try {
+      if (!Array.isArray(numeros) || numeros.length === 0) {
+        return "Error: no se proporcionaron números para sumar o la lista está vacía.";
+      }
+      if (!numeros.every(num => typeof num === "number" && !isNaN(num))) {
+        return "Error: todos los elementos deben ser números válidos.";
+      }
+      const resultado = numeros.reduce((acc, curr) => acc + curr, 0);
+      return `El resultado de la suma es ${resultado}`;
+    } catch (error) {
+      return `Error al sumar los números: ${error instanceof Error ? error.message : String(error)}`;
+    }
   },
 })
 
@@ -43,7 +55,8 @@ const CurrencyConverter = tool({
     toCurrency: z.enum(["MXN", "USD"]),
   }),
   callback: ({ amount, fromCurrency, toCurrency }) => {
-    if (fromCurrency === toCurrency) {
+    try {
+      if (fromCurrency === toCurrency) {
       return `${amount} ${fromCurrency} equivalen a ${amount} ${toCurrency}`;
     }
     // Tasas relativas a MXN (moneda base)
@@ -51,6 +64,9 @@ const CurrencyConverter = tool({
     const amountEnMxn = amount * tasasEnMxn[fromCurrency];
     const resultado = amountEnMxn / tasasEnMxn[toCurrency];
     return `${amount} ${fromCurrency} equivalen a ${resultado.toFixed(2)} ${toCurrency}`;
+    } catch (error) {
+      return `Error al convertir la moneda: ${error instanceof Error ? error.message : String(error)}`;
+    }
   },
 });
 

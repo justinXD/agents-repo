@@ -13,6 +13,12 @@ def calculadora(expresion: str) -> str:
 @tool
 def sumar(numeros: list[float]) -> str:
     """Suma n cantidad de números, ej: '1, 2, 3'"""
+    if not isinstance(numeros, list):
+        return "Error: se espera una lista de números."
+    if not numeros:
+        return "Error: no se proporcionaron números para sumar."
+    if not all(isinstance(x, (int, float)) and not isinstance(x, bool) for x in numeros):
+        return "Error: todos los elementos deben ser números válidos."
     resultado = sum(numeros)
     return f"El resultado de la suma es {resultado}"
 
