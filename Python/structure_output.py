@@ -1,6 +1,15 @@
-# from strands import Agent, tool
+from pydantic import BaseModel, Field
 from strands import Agent, tool
 import re
+
+class ResultadoConversion(BaseModel):
+    monto_original: float
+    moneda_original: str
+    monto_final: float
+    moneda_final: str
+    taza_usada:float
+    pasos: list[str] = Field(description="Explicación de cada paso del cálculo")
+
 
 @tool
 def calculadora(expresion: str) -> str:
@@ -28,7 +37,7 @@ def sumar(numeros: list[float]) -> str:
     return f"El resultado de la suma es {resultado}"
 
 @tool
-def CurrencyConverter(amount: float, fromCurrency: str, toCurrency: str) -> str:
+def currency_converter(amount: float, fromCurrency: str, toCurrency: str) -> str:
     """Convierte MXN a USD y viceversa, ej: '100 USD a MXN'"""
     # Aquí podrías implementar la lógica de conversión de divisas usando una API externa
     # Por simplicidad, vamos a devolver un mensaje simulado
@@ -44,10 +53,18 @@ def CurrencyConverter(amount: float, fromCurrency: str, toCurrency: str) -> str:
         return f"Error al convertir la moneda: {e}"
 
 agent = Agent(
-    model="us.anthropic.claude-haiku-4-5-20251001-v1:0",  # ajusta al model_id que tengas habilitado
-    system_prompt="Eres un asistente que ayuda con cálculos matemáticos. Usa las herramientas cuando sea necesario.",
-    tools=[calculadora, sumar, CurrencyConverter],
+    model="us.anthropic.claude-haiku-4-5-20251001-v1:0",
+    system_prompt="Eres un asistente financiero. Usa las herramientas disponibles para calcular y convertir montos.",
+    tools=[calculadora, sumar, currency_converter],
+    structured_output_model=ResultadoConversion
 )
 
-respuesta = agent("Convierte 100 MXN a USD, al resultado sumale 50.44 USD y luego conviertelo a MXN")
-print(respuesta)
+respuesta = agent(
+    "Convierte 100 MXN a USD, súmale 50.44 USD y conviértelo de vuelta a MXN",
+)
+
+print("Respuesta: ", respuesta)
+print("Estructurada: ", respuesta.structured_output)
+# Podemos manejar errores de salida estructurada si es necesario con StructuredOutputException
+# El import es: from strands.types.exceptions import StructuredOutputException
+# ResultadoConversion(monto_original=100, moneda_original='MXN', monto_final=1008.0, moneda_final='MXN', pasos=[...])

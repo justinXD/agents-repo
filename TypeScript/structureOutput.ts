@@ -1,7 +1,7 @@
-import { Agent, tool } from "@strands-agents/sdk";
+import { Agent, tool, StructuredOutputError } from "@strands-agents/sdk";
 import { z } from "zod";
 
-
+// ...reusa calculadora y CurrencyConverter del Ejercicio 1
 const calculadora = tool({
   name: "calculadora",
   description: "Evalúa una expresión matemática simple, ej: '23 * 4 + 1'",
@@ -10,7 +10,6 @@ const calculadora = tool({
   }),
   callback: async ({ expresion }) => {
     try {
-      // filtro basico con regex para permitir solo números, operadores y paréntesis
       if (!/^[\d\s+\-*/().]+$/.test(expresion)) {
         return `Error: la expresión contiene caracteres no permitidos.`;
       }
@@ -71,16 +70,35 @@ const CurrencyConverter = tool({
   },
 });
 
-const agent = new Agent({
-  model: "us.anthropic.claude-haiku-4-5-20251001-v1:0", // ajusta al model_id que tengas habilitado
-  systemPrompt: "Eres un asistente que ayuda con cálculos matemáticos. Usa las herramientas cuando sea necesario.",
-  tools: [calculadora, sumar, CurrencyConverter],
+const resultadoSchema = z.object({
+  montoOriginal: z.number(),
+  monedaOriginal: z.string(),
+  montoFinal: z.number(),
+  monedaFinal: z.string(),
+  tazaUsada: z.number(),
+  pasos: z.array(z.string()).describe("Explicación de cada paso del cálculo"),
 });
 
-// const respuesta = await agent.invoke("¿Cuánto es 45 * 12 + 7?");
-// const respuestaSuma = await agent.invoke("¿Cuál es el resultado de sumar 1, 2, 3, 4, 5 y así sucesivamente hasta llegar al 100?");
-// // console.log(respuesta);
-// console.log(respuestaSuma);
+const agent = new Agent({
+  model: "us.anthropic.claude-haiku-4-5-20251001-v1:0",
+  systemPrompt: "Eres un asistente financiero. Usa las herramientas disponibles para calcular y convertir montos.",
+  tools: [calculadora, sumar, CurrencyConverter],
+});
+try {
+    const respuesta = await agent.invoke(
+    "Convierte 100 MXN a USD, súmale 50.44 USD y conviértelo de vuelta a MXN",
+    { structuredOutputSchema: resultadoSchema } // ajusta el nombre exacto de la opción si difiere en tu versión del SDK
+    );
 
-const respuestaConversion = await agent.invoke("Convierte 100 MXN a USD, al resultado sumale 50.44 USD y luego conviertelo a MXN");
-console.log(respuestaConversion);
+    console.log("Respuesta: ", respuesta);
+    console.log("Estructurada: ", respuesta.structuredOutput);
+    // { montoOriginal: 100, monedaOriginal: "MXN", montoFinal: 1008, monedaFinal: "MXN", pasos: [...] }
+} catch (error) {
+    // podemos capturar errores específicos de salida estructurada
+    if (error instanceof StructuredOutputError) {
+        console.error("Error al obtener la salida estructurada:", error.message);
+    } else {
+        console.error("Error inesperado:", error);
+    }
+}
+
