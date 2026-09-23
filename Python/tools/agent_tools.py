@@ -1,15 +1,6 @@
-from pydantic import BaseModel, Field
-from strands import Agent, tool
+from strands import tool
+from functools import reduce
 import re
-
-class ResultadoConversion(BaseModel):
-    monto_original: float
-    moneda_original: str
-    monto_final: float
-    moneda_final: str
-    taza_usada:float
-    pasos: list[str] = Field(description="Explicación de cada paso del cálculo")
-
 
 @tool
 def calculadora(expresion: str) -> str:
@@ -37,6 +28,18 @@ def sumar(numeros: list[float]) -> str:
     return f"El resultado de la suma es {resultado}"
 
 @tool
+def restar(numeros: list[float]) -> str:
+    """Resta n cantidad de números, ej: '10 - 2 - 3'"""
+    if not isinstance(numeros, list):
+        return "Error: se espera una lista de números."
+    if not numeros:
+        return "Error: no se proporcionaron números para restar."
+    if not all(isinstance(x, (int, float)) and not isinstance(x, bool) for x in numeros):
+        return "Error: todos los elementos deben ser números válidos."
+    resultado = reduce(lambda x, y: x - y, numeros)
+    return f"El resultado de la resta es {resultado}"
+
+@tool
 def currency_converter(amount: float, fromCurrency: str, toCurrency: str) -> str:
     """Convierte MXN a USD y viceversa, ej: '100 USD a MXN'"""
     # Aquí podrías implementar la lógica de conversión de divisas usando una API externa
@@ -45,26 +48,12 @@ def currency_converter(amount: float, fromCurrency: str, toCurrency: str) -> str
         if fromCurrency == toCurrency:
             return f"{amount} {fromCurrency} equivalen a {amount} {toCurrency}"
 
+        if amount < 0:
+            return "Error: el monto debe ser un número positivo."
+
         tazas_en_mx = {"USD": 18, "MXN": 1}
         amount_in_mxn = amount * tazas_en_mx[fromCurrency]
         resultado = amount_in_mxn / tazas_en_mx[toCurrency]
         return f"Convertido {amount} {fromCurrency} a {toCurrency}: {resultado:.2f} {toCurrency}"
     except Exception as e:
         return f"Error al convertir la moneda: {e}"
-
-agent = Agent(
-    model="us.anthropic.claude-haiku-4-5-20251001-v1:0",
-    system_prompt="Eres un asistente financiero. Usa las herramientas disponibles para calcular y convertir montos.",
-    tools=[calculadora, sumar, currency_converter],
-    structured_output_model=ResultadoConversion
-)
-
-respuesta = agent(
-    "Convierte 100 MXN a USD, súmale 50.44 USD y conviértelo de vuelta a MXN",
-)
-
-print("Respuesta: ", respuesta)
-print("Estructurada: ", respuesta.structured_output)
-# Podemos manejar errores de salida estructurada si es necesario con StructuredOutputException
-# El import es: from strands.types.exceptions import StructuredOutputException
-# ResultadoConversion(monto_original=100, moneda_original='MXN', monto_final=1008.0, moneda_final='MXN', pasos=[...])
