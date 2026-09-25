@@ -2,6 +2,7 @@ from tools.agent_tools import sumar, currency_converter
 from strands.types.exceptions import StructuredOutputException
 from pydantic import BaseModel, Field
 from strands import Agent
+from pydantic import field_validator
 
 
 class Gasto(BaseModel):
@@ -9,6 +10,13 @@ class Gasto(BaseModel):
     monto_original: float
     moneda_original: str
     monto_en_mxn: float = Field(description="Monto convertido a MXN")
+
+    @field_validator("monto_en_mxn")
+    @classmethod
+    def monto_positivo(cls, v: float) -> float:
+        if v <= 0:
+            raise ValueError("monto_en_mxn debe ser mayor a cero")
+        return v
 
 class ResumenGastos(BaseModel):
     gastos: list[Gasto]
