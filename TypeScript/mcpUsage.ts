@@ -1,7 +1,7 @@
-import { Agent, McpClient } from "@strands-agents/sdk";
+import { Agent, McpClient, ToolList } from "@strands-agents/sdk";
 import { StdioClientTransport } from "@modelcontextprotocol/sdk/client/stdio.js";
-import { fi } from "zod/locales";
-
+import { CurrencyConverter } from "../tools/TypeScript/AgentTools";
+/*
 const mcpClient = new McpClient({
     transport: new StdioClientTransport({
         command: "uvx",
@@ -12,8 +12,26 @@ const mcpClient = new McpClient({
 const agent = new Agent({
     model: "us.anthropic.claude-haiku-4-5-20251001-v1:0",
     systemPrompt: "Eres un asistente experto en AWS. Consulta la documentación oficial con tus herramientas antes de responder.",
-    tools: [mcpClient],
+    tools: [mcpClient, CurrencyConverter],
 });
+*/
+
+function createAgent(tools: ToolList): Agent {
+    return new Agent({
+        model: "us.anthropic.claude-haiku-4-5-20251001-v1:0",
+        systemPrompt: "Eres un asistente experto en AWS. Consulta la documentación oficial con tus herramientas antes de responder.",
+        tools: [...tools],
+    });
+}
+
+function createMcpClient(): McpClient {
+    return new McpClient({
+        transport: new StdioClientTransport({
+            command: "uvx",
+            args: ["awslabs.aws-documentation-mcp-server@latest"],
+        }),
+    });
+}
 
 // const respuesta = await agent.invoke("¿Cuál es el tiempo máximo de ejecución de una función Lambda?");
 // console.log(respuesta);
@@ -27,7 +45,7 @@ async function invokeAgent(agent: Agent, prompt: string) {
     }
 }
 // listamos las herramientas disponibles del MCP
-async function listTools(mcpClient: McpClient) {
+async function listMcpTools(mcpClient: McpClient) {
     try {
         console.log("Listando herramientas disponibles en el MCP...");
         const tools = await mcpClient.listTools();
@@ -45,4 +63,8 @@ async function listTools(mcpClient: McpClient) {
 }
 
 // await invokeAgent(agent, "¿Cuál es el tiempo máximo de ejecución de una función Lambda?");
-await listTools(mcpClient);
+// listamos las herramientas disponibles del MCP
+// await listMcpTools(mcpClient);
+
+// ejercicio de recuperacion de informacion con el MCP y uso de tools
+await invokeAgent(createAgent([createMcpClient(), CurrencyConverter]), "¿Si hago 1 millon de llamadas a Lambda, cuál sería el costo estimado de todas esas llamadas en pesos mexicanos?");
