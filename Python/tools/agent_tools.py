@@ -1,5 +1,6 @@
 from strands import tool
-from functools import reduce
+from strands.tools.mcp import MCPClient, MCPTransport
+from typing import Callable
 import re
 
 @tool
@@ -36,8 +37,45 @@ def restar(numeros: list[float]) -> str:
         return "Error: no se proporcionaron números para restar."
     if not all(isinstance(x, (int, float)) and not isinstance(x, bool) for x in numeros):
         return "Error: todos los elementos deben ser números válidos."
-    resultado = reduce(lambda x, y: x - y, numeros)
+    
+    resultado = numeros[0] - numeros[1] if len(numeros) > 1 else numeros[0]
+    for num in numeros[2:]:
+        resultado -= num
     return f"El resultado de la resta es {resultado}"
+
+@tool
+def multiplicar(numeros: list[float]) -> str:
+    """Multiplica n cantidad de números, ej: '2 * 3 * 4'"""
+    if not isinstance(numeros, list):
+        return "Error: se espera una lista de números."
+    if not numeros:
+        return "Error: no se proporcionaron números para multiplicar."
+    if not all(isinstance(x, (int, float)) and not isinstance(x, bool) for x in numeros):
+        return "Error: todos los elementos deben ser números válidos."
+    
+    # resultado = reduce(lambda x, y: x * y, numeros)
+    resultado = numeros[0] * numeros[1] if len(numeros) > 1 else numeros[0]
+    for num in numeros[2:]:
+        resultado *= num
+    return f"El resultado de la multiplicación es {resultado}"
+
+@tool
+def dividir(numeros: list[float]) -> str:
+    """Divide n cantidad de números, ej: '20 / 2 / 2'"""
+    if not isinstance(numeros, list):
+        return "Error: se espera una lista de números."
+    if not numeros:
+        return "Error: no se proporcionaron números para dividir."
+    if not all(isinstance(x, (int, float)) and not isinstance(x, bool) for x in numeros):
+        return "Error: todos los elementos deben ser números válidos."
+    
+    try:
+        resultado = numeros[0] / numeros[1] if len(numeros) > 1 else numeros[0]
+        for num in numeros[2:]:
+            resultado /= num
+        return f"El resultado de la división es {resultado}"
+    except ZeroDivisionError:
+        return "Error: división entre cero."
 
 @tool
 def currency_converter(amount: float, fromCurrency: str, toCurrency: str) -> str:
@@ -57,3 +95,11 @@ def currency_converter(amount: float, fromCurrency: str, toCurrency: str) -> str
         return f"Convertido {amount} {fromCurrency} a {toCurrency}: {resultado:.2f} {toCurrency}"
     except Exception as e:
         return f"Error al convertir la moneda: {e}"
+
+def create_mcp_client(transport: Callable[[], MCPTransport]):
+    try:
+        print("Creando cliente MCP...")
+        return MCPClient(transport_callable=transport)
+    except Exception as e:
+        print(f"Error al crear el cliente MCP: {e}")
+        # return None

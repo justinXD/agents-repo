@@ -1,6 +1,6 @@
 import { Agent, McpClient, ToolList } from "@strands-agents/sdk";
 import { StdioClientTransport } from "@modelcontextprotocol/sdk/client/stdio.js";
-import { CurrencyConverter } from "../tools/TypeScript/AgentTools";
+import { CurrencyConverter, createMcpClient } from "../tools/TypeScript/AgentTools";
 /*
 const mcpClient = new McpClient({
     transport: new StdioClientTransport({
@@ -24,14 +24,6 @@ function createAgent(tools: ToolList): Agent {
     });
 }
 
-function createMcpClient(): McpClient {
-    return new McpClient({
-        transport: new StdioClientTransport({
-            command: "uvx",
-            args: ["awslabs.aws-documentation-mcp-server@latest"],
-        }),
-    });
-}
 
 // const respuesta = await agent.invoke("¿Cuál es el tiempo máximo de ejecución de una función Lambda?");
 // console.log(respuesta);
@@ -67,4 +59,5 @@ async function listMcpTools(mcpClient: McpClient) {
 // await listMcpTools(mcpClient);
 
 // ejercicio de recuperacion de informacion con el MCP y uso de tools
-await invokeAgent(createAgent([createMcpClient(), CurrencyConverter]), "¿Si hago 1 millon de llamadas a Lambda, cuál sería el costo estimado de todas esas llamadas en pesos mexicanos?");
+// await invokeAgent(createAgent([createMcpClient(() => new StdioClientTransport({ command: "uvx", args: ["awslabs.aws-documentation-mcp-server@latest"] })), CurrencyConverter]), "¿Si hago 1 millon de llamadas a Lambda, cuál sería el costo estimado de todas esas llamadas en pesos mexicanos?");
+await invokeAgent(createAgent([createMcpClient(() => new StdioClientTransport({ command: "uvx", args: ["awslabs.aws-pricing-mcp-server@latest"], env: { "FASTMCP_LOG_LEVEL": "ERROR", "AWS_PROFILE": "default", "AWS_REGION": "us-east-1" } })), CurrencyConverter]), "¿Si hago 1 millon de llamadas a Lambda, cuál sería el costo estimado de todas esas llamadas en pesos mexicanos?");

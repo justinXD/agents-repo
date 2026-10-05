@@ -1,4 +1,4 @@
-import { tool } from "@strands-agents/sdk";
+import { tool, McpClient, McpTransport } from "@strands-agents/sdk";
 import { z } from "zod";
 
 const calculadora = tool({
@@ -43,7 +43,7 @@ const sumar = tool({
       return `Error al sumar los números: ${error instanceof Error ? error.message : String(error)}`;
     }
   },
-})
+});
 
 const restar = tool({
   name: "restar_tool",
@@ -59,13 +59,70 @@ const restar = tool({
       if (!numeros.every(num => typeof num === "number" && !isNaN(num))) {
         return "Error: todos los elementos deben ser números válidos.";
       }
-      const resultado = numeros.reduce((acc, curr) => acc - curr, 0);
-      return `El resultado de la resta es ${resultado}`;
+      let acumulador: number = numeros[0] - numeros[1];
+      for(let i = 2; i < numeros.length; i++) {
+        acumulador -= numeros[i]
+      }
+      return `El resultado de la resta es ${acumulador}`;
     } catch (error) {
       return `Error al restar los números: ${error instanceof Error ? error.message : String(error)}`;
     }
   },
-})
+});
+
+const multiplicar = tool({
+  name: "multiplicar_tool",
+  description: "Multiplica n cantidad de números, ej: '2 * 3 * 4'",
+  inputSchema: z.object({
+    numeros: z.array(z.number()),
+  }),
+  callback: async ({ numeros }) => {
+    try {
+      if (!Array.isArray(numeros) || numeros.length === 0) {
+        return "Error: no se proporcionaron números para multiplicar o la lista está vacía.";
+      }
+      if (!numeros.every(num => typeof num === "number" && !isNaN(num))) {
+        return "Error: todos los elementos deben ser números válidos.";
+      }
+      // const resultado = numeros.reduce((acc, curr) => acc * curr, 1);
+      let resultado: number = numeros[0] * numeros[1];
+      for(let i = 2; i < numeros.length; i++) {
+        resultado *= numeros[i]
+      }
+      return `El resultado de la multiplicación es ${resultado}`;
+    } catch (error) {
+      return `Error al multiplicar los números: ${error instanceof Error ? error.message : String(error)}`;
+    }
+  },
+});
+
+const dividir = tool({
+  name: "dividir_tool",
+  description: "Divide n cantidad de números, ej: '20 / 2 / 2'",
+  inputSchema: z.object({
+    numeros: z.array(z.number()),
+  }),
+  callback: async ({ numeros }) => {
+    try {
+      if (!Array.isArray(numeros) || numeros.length === 0) {
+        return "Error: no se proporcionaron números para dividir o la lista está vacía.";
+      }
+      if (!numeros.every(num => typeof num === "number" && !isNaN(num))) {
+        return "Error: todos los elementos deben ser números válidos.";
+      }
+      let resultado: number = numeros[0] / numeros[1];
+      for(let i = 2; i < numeros.length; i++) {
+        if (numeros[i] === 0) {
+          return "Error: división por cero no permitida.";
+        }
+        resultado /= numeros[i]
+      }
+      return `El resultado de la división es ${resultado}`;
+    } catch (error) {
+      return `Error al dividir los números: ${error instanceof Error ? error.message : String(error)}`;
+    }
+  },
+});
 
 const CurrencyConverter = tool({
   name: "currency_converter",
@@ -75,7 +132,7 @@ const CurrencyConverter = tool({
     fromCurrency: z.enum(["MXN", "USD"]),
     toCurrency: z.enum(["MXN", "USD"]),
   }),
-  callback: ({ amount, fromCurrency, toCurrency }) => {
+  callback: async ({ amount, fromCurrency, toCurrency }) => {
     try {
       if (fromCurrency === toCurrency) {
       return `${amount} ${fromCurrency} equivalen a ${amount} ${toCurrency}`;
@@ -94,4 +151,8 @@ const CurrencyConverter = tool({
   },
 });
 
-export { calculadora, sumar, restar, CurrencyConverter };
+function createMcpClient(makeTransport: () => McpTransport): McpClient {
+    return new McpClient({ transport: makeTransport() });
+}
+
+export { calculadora, sumar, restar, multiplicar, dividir, CurrencyConverter, createMcpClient };
