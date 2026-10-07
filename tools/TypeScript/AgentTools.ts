@@ -151,8 +151,27 @@ const CurrencyConverter = tool({
   },
 });
 
-function createMcpClient(makeTransport: () => McpTransport): McpClient {
+const createMcpClient = (makeTransport: () => McpTransport): McpClient => {
     return new McpClient({ transport: makeTransport() });
 }
 
-export { calculadora, sumar, restar, multiplicar, dividir, CurrencyConverter, createMcpClient };
+const conTimeout = async <T>(p: Promise<T>, ms: number): Promise<T> => {
+  let timer: ReturnType<typeof setTimeout> | undefined;
+  const timeout = new Promise<never>((_, reject) => {
+    timer = setTimeout(() => reject(new Error("timeout")), ms);
+  });
+  try {
+    return await Promise.race([p, timeout]);
+  } finally {
+    clearTimeout(timer); // el timer no deja el proceso colgado
+  }
+};
+
+const disconnectAll = async (clients: McpClient[], ms = 5000) => {
+  const results = await Promise.allSettled(clients.map((c) => conTimeout(c.disconnect(), ms)));
+  results.forEach((r, i) => {
+    if (r.status === "rejected") console.warn(`MCP client #${i} no cerró bien:`, r.reason);
+  });
+}
+
+export { calculadora, sumar, restar, multiplicar, dividir, CurrencyConverter, createMcpClient, disconnectAll };
