@@ -1,5 +1,5 @@
-import { tool, McpClient, McpTransport } from "@strands-agents/sdk";
-import { z } from "zod";
+import { tool, McpClient, McpTransport, AgentResult, Agent, Swarm } from "@strands-agents/sdk";
+import { set, z } from "zod";
 
 const calculadora = tool({
   name: "calculadora",
@@ -60,7 +60,7 @@ const restar = tool({
         return "Error: todos los elementos deben ser números válidos.";
       }
       let acumulador: number = numeros[0] - numeros[1];
-      for(let i = 2; i < numeros.length; i++) {
+      for (let i = 2; i < numeros.length; i++) {
         acumulador -= numeros[i]
       }
       return `El resultado de la resta es ${acumulador}`;
@@ -86,7 +86,7 @@ const multiplicar = tool({
       }
       // const resultado = numeros.reduce((acc, curr) => acc * curr, 1);
       let resultado: number = numeros[0] * numeros[1];
-      for(let i = 2; i < numeros.length; i++) {
+      for (let i = 2; i < numeros.length; i++) {
         resultado *= numeros[i]
       }
       return `El resultado de la multiplicación es ${resultado}`;
@@ -111,7 +111,7 @@ const dividir = tool({
         return "Error: todos los elementos deben ser números válidos.";
       }
       let resultado: number = numeros[0] / numeros[1];
-      for(let i = 2; i < numeros.length; i++) {
+      for (let i = 2; i < numeros.length; i++) {
         if (numeros[i] === 0) {
           return "Error: división por cero no permitida.";
         }
@@ -135,16 +135,16 @@ const CurrencyConverter = tool({
   callback: async ({ amount, fromCurrency, toCurrency }) => {
     try {
       if (fromCurrency === toCurrency) {
-      return `${amount} ${fromCurrency} equivalen a ${amount} ${toCurrency}`;
-    }
-    if (amount < 0) {
-      return "Error: el monto debe ser un número positivo.";
-    }
-    // Tasas relativas a MXN (moneda base)
-    const tasasEnMxn: Record<string, number> = { MXN: 1, USD: 18 };
-    const amountEnMxn = amount * tasasEnMxn[fromCurrency];
-    const resultado = amountEnMxn / tasasEnMxn[toCurrency];
-    return `${amount} ${fromCurrency} equivalen a ${resultado.toFixed(2)} ${toCurrency}`;
+        return `${amount} ${fromCurrency} equivalen a ${amount} ${toCurrency}`;
+      }
+      if (amount < 0) {
+        return "Error: el monto debe ser un número positivo.";
+      }
+      // Tasas relativas a MXN (moneda base)
+      const tasasEnMxn: Record<string, number> = { MXN: 1, USD: 18 };
+      const amountEnMxn = amount * tasasEnMxn[fromCurrency];
+      const resultado = amountEnMxn / tasasEnMxn[toCurrency];
+      return `${amount} ${fromCurrency} equivalen a ${resultado.toFixed(2)} ${toCurrency}`;
     } catch (error) {
       return `Error al convertir la moneda: ${error instanceof Error ? error.message : String(error)}`;
     }
@@ -152,7 +152,7 @@ const CurrencyConverter = tool({
 });
 
 const createMcpClient = (makeTransport: () => McpTransport): McpClient => {
-    return new McpClient({ transport: makeTransport() });
+  return new McpClient({ transport: makeTransport() });
 }
 
 const conTimeout = async <T>(p: Promise<T>, ms: number): Promise<T> => {
@@ -174,4 +174,126 @@ const disconnectAll = async (clients: McpClient[], ms = 5000) => {
   });
 }
 
-export { calculadora, sumar, restar, multiplicar, dividir, CurrencyConverter, createMcpClient, disconnectAll };
+const printAgentMetrics = (agentResponse: AgentResult) => {
+  try {
+    console.log("Métricas del agente:");
+    console.log("Ciclos totales:", agentResponse.metrics?.cycleCount);
+    console.log("Tokens usados:", agentResponse.metrics?.accumulatedUsage);
+    console.log("Tiempo de respuesta (ms):", agentResponse.metrics?.totalDuration);
+    console.log("Tool metrics:")
+    if (agentResponse.metrics?.toolMetrics) {
+      for (const [toolName, toolMetric] of Object.entries(agentResponse.metrics.toolMetrics)) {
+        console.log(`${toolName}:`);
+        console.log(`Calls: ${toolMetric.callCount}`);
+        console.log(`Duration (ms): ${toolMetric.totalTime}`);
+      }
+    } else {
+      console.log("  No se encontraron métricas de herramientas.");
+    }
+    console.log("Invocacion del agente:", agentResponse.metrics?.agentInvocations[0].cycles);
+    console.log("JSON metrics:")
+    console.log(JSON.stringify(agentResponse?.metrics?.toJSON()));
+  } catch (error) {
+    console.error("Error al imprimir métricas del agente:", error);
+  }
+}
+
+const invokeAgent = async (agent: Agent, prompt: string, mcpClients?: McpClient[]) => {
+  try {
+    console.log("Invocando al agente con el prompt:", prompt);
+    const respuesta = await agent.invoke(prompt);
+    console.log("Respuesta del agente:", respuesta);
+    printAgentMetrics(respuesta);
+  } catch (error) {
+    console.error("Error al invocar el agente:", error);
+  } finally {
+    if (mcpClients) {
+      await disconnectAll(mcpClients, 5000);
+    }
+  }
+}
+
+const invokeSwarm = async (swarm: Swarm, prompt: string, mcpClients?: McpClient[]) => {
+  try {
+    console.log("Invocando al swarm con el prompt:", prompt);
+    const resultado = await swarm.invoke(prompt);
+    console.log("Status: ", resultado.status)
+    console.log("Resultado:", resultado.results);
+    console.log("Node results: ", resultado.results.map((r) => r.nodeId).join(' -> '))
+  } catch (error) {
+    console.error("Error al invocar el swarm:", error);
+  } finally {
+    if (mcpClients) {
+      await disconnectAll(mcpClients, 5000);
+    }
+  }
+}
+
+const invokeSwarmWithStream = async (swarm: Swarm, prompt: string, mcpClients?: McpClient[]) => {
+  try {
+    console.log("Invocando al swarm con stream y el prompt:", prompt);
+    const relevantEvents = new Set<string>(["modelMessageEvent", "agentResultEvent"]);
+    // console.log("eventos relevantes: ", relevantEvents);
+    // return new Error("Error: invokeSwarmWithStream no implementado correctamente. Se requiere lógica para manejar los eventos del stream.");
+    for await (const event of swarm.stream(prompt)) {
+      // console.log("Evento del stream:", event);
+      switch (event.type) {
+        // Track handoffs between agents
+        case 'multiAgentHandoffEvent':
+          console.log(`\nHandoff: ${event.source} -> ${event.targets.join(', ')}`)
+          break
+
+        // Monitor individual node results
+        case 'nodeResultEvent':
+          console.log(`\nNode ${event.result.nodeId}: ${event.result.status}`)
+          break
+
+        case "nodeStreamUpdateEvent":
+          // console.log(`block delta event: ${JSON.stringify(event.inner.event)}`)
+          if (Object.hasOwn(event.inner.event, "type")) {
+            // console.log("Event si tiene type: ", event.inner.event.type, relevantEvents.has(event.inner.event.type))
+            if (relevantEvents.has(event.inner.event.type)) {
+              switch (event.inner.event.type) {
+                case "modelMessageEvent":
+                  console.log("Process update: ", event.inner.event.message.content[0].text)
+                  break;
+                case "agentResultEvent":
+                  console.log("Agent result: ", event.inner.event.result.lastMessage.content[0].text)
+                  break;
+              
+                default:
+                  break;
+              }
+            }
+          }
+          break
+
+        // Get final result
+        case 'multiAgentResultEvent':
+          console.log(`\nSwarm completed: ${event.result.status}`)
+          break
+      }
+    }
+  } catch (error) {
+    console.error("Error al invocar el swarm con stream:", error);
+  } finally {
+    if (mcpClients) {
+      await disconnectAll(mcpClients, 5000);
+    }
+  }
+}
+
+export { 
+  calculadora, 
+  sumar, 
+  restar, 
+  multiplicar, 
+  dividir, 
+  CurrencyConverter, 
+  createMcpClient, 
+  disconnectAll, 
+  printAgentMetrics, 
+  invokeAgent, 
+  invokeSwarm, 
+  invokeSwarmWithStream
+};

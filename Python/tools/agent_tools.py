@@ -1,4 +1,5 @@
 from strands import tool
+from strands.multiagent import Swarm
 from strands.tools.mcp import MCPClient, MCPTransport
 from typing import Callable
 import re
@@ -102,4 +103,32 @@ def create_mcp_client(transport: Callable[[], MCPTransport]):
         return MCPClient(transport_callable=transport)
     except Exception as e:
         print(f"Error al crear el cliente MCP: {e}")
+        # return None
+
+async def invoke_swarm_with_stream(swarm: Swarm, prompt: str):
+    try:
+        print("Invocando swarm con streaming y el prompt: ", prompt)
+        async for event in swarm.stream_async(prompt):
+            # Track node execution
+            if event.get("type") == "multiagent_node_start":
+                print(f"Agent {event['node_id']} taking control")
+
+            # Monitor agent events
+            elif event.get("type") == "multiagent_node_stream":
+                inner_event = event["event"]
+                if "data" in inner_event:
+                    print(inner_event["data"], end="")
+
+            # Track handoffs
+            elif event.get("type") == "multiagent_handoff":
+                from_nodes = ", ".join(event['from_node_ids'])
+                to_nodes = ", ".join(event['to_node_ids'])
+                print(f"\nHandoff: {from_nodes} -> {to_nodes}")
+
+            # Get final result
+            elif event.get("type") == "multiagent_result":
+                result = event["result"]
+                print(f"\nSwarm completed: {result.status}")
+    except Exception as e:
+        print(f"Error al invocar el swarm con streaming: {e}")
         # return None

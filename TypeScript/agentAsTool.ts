@@ -1,6 +1,6 @@
-import { Agent, AgentResult } from "@strands-agents/sdk";
+import { Agent } from "@strands-agents/sdk";
 import { StdioClientTransport } from "@modelcontextprotocol/sdk/client/stdio.js";
-import { createMcpClient, CurrencyConverter, sumar, multiplicar, disconnectAll } from "../tools/TypeScript/AgentTools";
+import { createMcpClient, CurrencyConverter, sumar, multiplicar, invokeAgent } from "../tools/TypeScript/AgentTools";
 import { MODEL, PROMPT_COSTO_MILLON_LLAMADAS_LAMBDA } from "../tools/TypeScript/constantes";
 
 const currencyAgent = new Agent({
@@ -11,11 +11,11 @@ const currencyAgent = new Agent({
 });
 
 const mcpDocsClient = createMcpClient(() => new StdioClientTransport(
-        {
-            command: "uvx",
-            args: ["awslabs.aws-documentation-mcp-server@latest"]
-        })
-    )
+    {
+        command: "uvx",
+        args: ["awslabs.aws-documentation-mcp-server@latest"]
+    })
+)
 
 const awsDocsAgent = new Agent({
     model: MODEL,
@@ -25,12 +25,12 @@ const awsDocsAgent = new Agent({
 });
 
 const mcpCostClient = createMcpClient(() => new StdioClientTransport(
-        {
-            command: "uvx",
-            args: ["awslabs.aws-pricing-mcp-server@latest"],
-            env: { "FASTMCP_LOG_LEVEL": "ERROR", "AWS_PROFILE": "default", "AWS_REGION": "us-east-1" }
-        })
-    )
+    {
+        command: "uvx",
+        args: ["awslabs.aws-pricing-mcp-server@latest"],
+        env: { "FASTMCP_LOG_LEVEL": "ERROR", "AWS_PROFILE": "default", "AWS_REGION": "us-east-1" }
+    })
+)
 const awsCostAgent = new Agent({
     model: MODEL,
     systemPrompt: "Eres especialista en AWS. Consulta los precios desde las fuentes oficiales y menciona qué página consultaste.",
@@ -74,44 +74,22 @@ const singleAgent = new Agent({
     tools: [mcpDocsClient, mcpCostClient, CurrencyConverter, sumar, multiplicar],
 });
 
-const invokeAgent = async (agent: Agent, prompt: string) => {
-    try {
-        console.log("Invocando al agente con el prompt:", prompt);
-        const respuesta = await agent.invoke(prompt);
-        console.log("Respuesta del agente:", respuesta);
-        printAgentMetrics(respuesta);
-    } catch (error) {
-        console.error("Error al invocar el agente:", error);
-    } finally {
-        await disconnectAll([mcpCostClient, mcpDocsClient], 5000);
-    }
-}
+// const invokeAgent = async (agent: Agent, prompt: string) => {
+//     try {
+//         console.log("Invocando al agente con el prompt:", prompt);
+//         const respuesta = await agent.invoke(prompt);
+//         console.log("Respuesta del agente:", respuesta);
+//         printAgentMetrics(respuesta);
+//     } catch (error) {
+//         console.error("Error al invocar el agente:", error);
+//     } finally {
+//         await disconnectAll([mcpCostClient, mcpDocsClient], 5000);
+//     }
+// }
 
-const printAgentMetrics = (agentResponse: AgentResult) => {
-    try {
-        console.log("Métricas del agente:");
-        console.log("Ciclos totales:", agentResponse.metrics?.cycleCount);
-        console.log("Tokens usados:", agentResponse.metrics?.accumulatedUsage);
-        console.log("Tiempo de respuesta (ms):", agentResponse.metrics?.totalDuration);
-        console.log("Tool metrics:")
-        if (agentResponse.metrics?.toolMetrics) {
-            for (const [toolName, toolMetric] of Object.entries(agentResponse.metrics.toolMetrics)) {
-                console.log(`${toolName}:`);
-                console.log(`Calls: ${toolMetric.callCount}`);
-                console.log(`Duration (ms): ${toolMetric.totalTime}`);
-            }
-        } else {
-            console.log("  No se encontraron métricas de herramientas.");
-        }
-        console.log("Invocacion del agente:", agentResponse.metrics?.agentInvocations[0].cycles);
-    } catch (error) {
-        console.error("Error al imprimir métricas del agente:", error);
-    }
-}
-
-await invokeAgent(orchestrator, "Convierte 100 USD a MXN.");
-await invokeAgent(orchestrator, "Ahora hazlo al revés.");
-// await invokeAgent(orchestrator, "Convierte 100 USD a MXN.");
-// await invokeAgent(orchestrator, "Convierte ahora  290 USD a MXN.");
-// await invokeAgent(orchestrator, "Por útimo convierte 18000 MXN a USD.");
-// await invokeAgent(singleAgent, PROMPT_COSTO_MILLON_LLAMADAS_LAMBDA);
+await invokeAgent(orchestrator, "Convierte 100 USD a MXN.", [mcpCostClient, mcpDocsClient]);
+await invokeAgent(orchestrator, "Ahora hazlo al revés.", [mcpCostClient, mcpDocsClient]);
+// await invokeAgent(orchestrator, "Convierte 100 USD a MXN.", [mcpCostClient, mcpDocsClient]);
+// await invokeAgent(orchestrator, "Convierte ahora  290 USD a MXN.", [mcpCostClient, mcpDocsClient]);
+// await invokeAgent(orchestrator, "Por útimo convierte 18000 MXN a USD.", [mcpCostClient, mcpDocsClient]);
+// await invokeAgent(singleAgent, PROMPT_COSTO_MILLON_LLAMADAS_LAMBDA, [mcpCostClient, mcpDocsClient]);
