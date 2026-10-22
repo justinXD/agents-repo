@@ -1,5 +1,8 @@
-import { tool, McpClient, McpTransport, AgentResult, Agent, Swarm } from "@strands-agents/sdk";
-import { set, z } from "zod";
+import { tool, McpClient, McpTransport, AgentResult, Agent, Swarm, Graph, ContentBlock } from "@strands-agents/sdk";
+import { z } from "zod";
+
+const textoDe = (content: ContentBlock[]) =>
+  content.map((block) => ("text" in block ? block.text : "")).join("");
 
 const calculadora = tool({
   name: "calculadora",
@@ -168,7 +171,7 @@ const conTimeout = async <T>(p: Promise<T>, ms: number): Promise<T> => {
 };
 
 const disconnectAll = async (clients: McpClient[], ms = 5000) => {
-  const results = await Promise.allSettled(clients.map((c) => conTimeout(c.disconnect(), ms)));
+  const results = await Promise.allSettled(clients.map((mcpClient) => conTimeout(mcpClient.disconnect(), ms)));
   results.forEach((r, i) => {
     if (r.status === "rejected") console.warn(`MCP client #${i} no cerró bien:`, r.reason);
   });
@@ -255,10 +258,10 @@ const invokeSwarmWithStream = async (swarm: Swarm, prompt: string, mcpClients?: 
             if (relevantEvents.has(event.inner.event.type)) {
               switch (event.inner.event.type) {
                 case "modelMessageEvent":
-                  console.log("Process update: ", event.inner.event.message.content[0].text)
+                  console.log("Process update: ", textoDe(event.inner.event.message.content))
                   break;
                 case "agentResultEvent":
-                  console.log("Agent result: ", event.inner.event.result.lastMessage.content[0].text)
+                  console.log("Agent result: ", textoDe(event.inner.event.result.lastMessage.content))
                   break;
               
                 default:
@@ -283,6 +286,61 @@ const invokeSwarmWithStream = async (swarm: Swarm, prompt: string, mcpClients?: 
   }
 }
 
+const invokeGraphWithStream = async (graph: Graph, prompt: string, mcpClients?: McpClient[]) => {
+  try {
+    const relevantEvents = new Set<string>(["modelMessageEvent", "agentResultEvent"]);
+    for await (const event of graph.stream(prompt)) {
+      switch (event.type) {
+        // Track node execution
+        case 'beforeNodeCallEvent':
+          console.log(`\nNode ${event.nodeId} starting`)
+          break
+
+        // Monitor node completion
+        case 'nodeResultEvent':
+          console.log(`\nNode ${event.nodeId} completed in ${event.result.duration}ms`)
+          break
+
+        // Track handoffs between nodes
+        case 'multiAgentHandoffEvent':
+          console.log(`\nHandoff: ${event.source} -> ${event.targets.join(', ')}`)
+          break
+
+        case "nodeStreamUpdateEvent":
+          // console.log(`block delta event: ${JSON.stringify(event.inner.event)}`)
+          if (Object.hasOwn(event.inner.event, "type")) {
+            // console.log("Event si tiene type: ", event.inner.event.type, relevantEvents.has(event.inner.event.type))
+            if (relevantEvents.has(event.inner.event.type)) {
+              switch (event.inner.event.type) {
+                case "modelMessageEvent":
+                  console.log("Process update: ", textoDe(event.inner.event.message.content))
+                  break;
+                case "agentResultEvent":
+                  console.log("Agent result: ", textoDe(event.inner.event.result.lastMessage.content))
+                  break;
+              
+                default:
+                  break;
+              }
+            }
+          }
+          break
+
+        // Get final result
+        case 'multiAgentResultEvent':
+          console.log(`\nGraph completed: ${event.result.status}`)
+          break
+      }
+    }
+  } catch (error) {
+    console.error("Error al invocar el graph con stream:", error);
+  } finally {
+    if (mcpClients) {
+      await disconnectAll(mcpClients, 5000);
+    }
+  }
+}
+
 export { 
   calculadora, 
   sumar, 
@@ -295,5 +353,6 @@ export {
   printAgentMetrics, 
   invokeAgent, 
   invokeSwarm, 
-  invokeSwarmWithStream
+  invokeSwarmWithStream,
+  invokeGraphWithStream
 };

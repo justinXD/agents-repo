@@ -1,8 +1,10 @@
 from strands import tool
 from strands.multiagent import Swarm
+from strands.multiagent.graph import Graph
 from strands.tools.mcp import MCPClient, MCPTransport
 from typing import Callable
 import re
+import json
 
 @tool
 def calculadora(expresion: str) -> str:
@@ -131,4 +133,33 @@ async def invoke_swarm_with_stream(swarm: Swarm, prompt: str):
                 print(f"\nSwarm completed: {result.status}")
     except Exception as e:
         print(f"Error al invocar el swarm con streaming: {e}")
+        # return None
+
+async def invoke_graph_with_stream(graph: Graph, prompt: str):
+    try:
+        print("Invocando graph con streaming y el prompt: ", prompt)
+        # Stream events during execution
+        async for event in graph.stream_async(prompt):
+            # Track node execution
+            if event.get("type") == "multiagent_node_start":
+                print(f"Node {event['node_id']} starting")
+
+            # Monitor agent events within nodes
+            elif event.get("type") == "multiagent_node_stream":
+                inner_event = event["event"]
+                if "data" in inner_event:
+                    print(inner_event["data"], end="")
+
+            # Track node completion
+            elif event.get("type") == "multiagent_node_stop":
+                node_result = event["node_result"]
+                print(f"\nNode {event['node_id']} completed in {node_result.execution_time}ms")
+
+            # Get final result
+            elif event.get("type") == "multiagent_result":
+                result = event["result"]
+                print(f"Graph completed: {result.status}")
+                # print(f"event: {json.loads(event)}")
+    except Exception as e:
+        print(f"Error al invocar el graph con streaming: {e}")
         # return None
