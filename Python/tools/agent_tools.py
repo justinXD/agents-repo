@@ -1,6 +1,7 @@
 from strands import tool
 from strands.multiagent import Swarm
-from strands.multiagent.graph import Graph
+from strands.multiagent.graph import Graph, GraphState
+from strands.multiagent.base import Status
 from strands.tools.mcp import MCPClient, MCPTransport
 from typing import Callable
 import re
@@ -106,6 +107,16 @@ def create_mcp_client(transport: Callable[[], MCPTransport]):
     except Exception as e:
         print(f"Error al crear el cliente MCP: {e}")
         # return None
+
+## Funcion para esperar a que todas las ramas paralelas terminen antes de continuar
+def all_dependencies_complete(required_nodes: list[str]):
+    """Factory function to create AND condition for multiple dependencies."""
+    def check_all_complete(state: GraphState) -> bool:
+        return all(
+            node_id in state.results and state.results[node_id].status == Status.COMPLETED
+            for node_id in required_nodes
+        )
+    return check_all_complete
 
 async def invoke_swarm_with_stream(swarm: Swarm, prompt: str):
     try:
