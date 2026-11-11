@@ -300,10 +300,10 @@ El repo incluye dos scripts que comprueban todo lo anterior y hacen una llamada 
 
 ```bash
 # Python (con el entorno virtual activado)
-python scripts/verificar_entorno.py
+python verificar_entorno.py
 
 # TypeScript (desde la carpeta con tu package.json)
-npx tsx scripts/verificarEntorno.ts
+npx tsx verificarEntorno.ts
 ```
 
 El script de Python revisa versiones de Python, Node.js, AWS CLI y `uv`, que `uvx` esté en el PATH, que el SDK de Strands esté instalado, que tus credenciales funcionen (solo muestra los últimos 4 dígitos de tu cuenta), y que el modelo responda. Si ves `❌`, la sección 4.8 explica los errores más comunes.

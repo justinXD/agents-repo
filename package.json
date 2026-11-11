@@ -20,5 +20,8 @@
   "dependencies": {
     "@strands-agents/sdk": "^1.14.0",
     "zod": "^4.4.3"
+  },
+  "devDependencies": {
+    "@types/node": "^26.6.6"
   }
 }
