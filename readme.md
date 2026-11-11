@@ -9,7 +9,7 @@
 1. [Por qué existe este repositorio](#1-por-qué-existe-este-repositorio)
 2. [Cómo usé la IA como maestro y mentor](#2-cómo-usé-la-ia-como-maestro-y-mentor)
 3. [Stack tecnológico](#3-stack-tecnológico)
-4. [Requisitos y configuración](#4-requisitos-y-configuración)
+4. [Fase 0: preparación del entorno](#4-fase-0-preparación-del-entorno)
 5. [Ruta de aprendizaje](#5-ruta-de-aprendizaje)
 6. [Ejercicios completados](#6-ejercicios-completados)
 7. [Patrones multi-agente: comparativa](#7-patrones-multi-agente-comparativa)
@@ -84,50 +84,258 @@ Este repo se construyó con **Claude (Anthropic)** como mentor. No le pedí "haz
 
 ---
 
-## 4. Requisitos y configuración
+## 4. Fase 0: preparación del entorno
 
-**Requisitos**
+Esta fase está pensada para quien clona el repo y **solo tiene Python y Node.js instalados**. Al terminar tendrás todas las herramientas, credenciales de AWS y un script que verifica que todo funciona antes de empezar con los ejercicios. Las instrucciones cubren **macOS, Linux y Windows**.
 
-- Cuenta de AWS con acceso habilitado a un modelo en Amazon Bedrock
-- AWS CLI
-- Python 3.10 o superior
-- Node.js (LTS reciente)
-- [`uv`](https://docs.astral.sh/uv/) (lanza los servidores MCP con `uvx`)
+### 4.1 Qué vamos a preparar
 
-**Credenciales de AWS**
+| Herramienta | Para qué se usa | Versión mínima |
+|---|---|---|
+| Git | Clonar y versionar el repo | Cualquiera reciente |
+| Python | Ejercicios en Python | 3.10 o superior |
+| Node.js y npm | Ejercicios en TypeScript y CLI de AgentCore | 20 o superior |
+| AWS CLI v2 | Autenticarte en AWS | v2 |
+| `uv` / `uvx` | Lanzar los servidores MCP de los ejercicios | Reciente |
+| Cuenta de AWS con acceso a Amazon Bedrock | Los modelos que usan los agentes | n/a |
+
+**Terminal recomendada**
+
+- **macOS:** Terminal o iTerm. Se recomienda [Homebrew](https://brew.sh) para instalar herramientas.
+- **Linux:** cualquier terminal. Los comandos de ejemplo usan `apt` (Debian/Ubuntu); en otras distribuciones cambia el gestor de paquetes.
+- **Windows:** **PowerShell** (no CMD). Necesitas `winget`, que viene con Windows 10/11 actualizados. Si prefieres, instala WSL2 y sigue las instrucciones de Linux dentro de él.
+
+### 4.2 Verifica lo que ya tienes
+
+**macOS / Linux**
 
 ```bash
-aws configure                  # Access Key, Secret, región (donde tengas Bedrock) y formato json
-aws sts get-caller-identity    # confirma que la autenticación funciona
+python3 --version   # 3.10 o superior
+node --version      # v20 o superior
+npm --version
+git --version
 ```
 
-> Nunca subas credenciales al repositorio. Las keys viven en `~/.aws/`, no en el código.
+**Windows (PowerShell)**
 
-**Python**
+```powershell
+py --version        # 3.10 o superior (en Windows usa `py`, no `python`)
+node --version      # v20 o superior
+npm --version
+git --version
+```
+
+Si alguno falta o su versión es menor, instálalo o actualízalo desde [python.org](https://www.python.org/downloads/) o [nodejs.org](https://nodejs.org/) antes de seguir.
+
+### 4.3 Instala las herramientas que faltan
+
+<details>
+<summary><strong>macOS</strong></summary>
 
 ```bash
-python -m venv venv
+# 1. Homebrew (omite este paso si ya lo tienes)
+/bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
+
+# 2. Git, AWS CLI v2 y uv
+brew install git awscli uv
+
+# 3. Verifica
+aws --version
+uv --version
+```
+
+Alternativa para AWS CLI: el instalador `.pkg` oficial de https://awscli.amazonaws.com/AWSCLIV2.pkg. Si falta Git, `xcode-select --install` también lo instala.
+
+</details>
+
+<details>
+<summary><strong>Linux (Debian / Ubuntu)</strong></summary>
+
+```bash
+# 1. Utilidades base (python3-venv es necesario para crear entornos virtuales)
+sudo apt update && sudo apt install -y git curl unzip python3-venv
+
+# 2. AWS CLI v2 (en equipos ARM cambia x86_64 por aarch64)
+curl "https://awscli.amazonaws.com/awscli-exe-linux-x86_64.zip" -o "awscliv2.zip"
+unzip awscliv2.zip
+sudo ./aws/install
+rm -rf awscliv2.zip aws/
+
+# 3. uv
+curl -LsSf https://astral.sh/uv/install.sh | sh
+
+# 4. Cierra y abre la terminal, y verifica
+aws --version
+uv --version
+```
+
+En Fedora/RHEL usa `sudo dnf install -y git curl unzip` en lugar del paso 1. No instales AWS CLI con `apt install awscli`: suele traer una versión antigua. Si prefieres un gestor de paquetes, existe `sudo snap install aws-cli --classic`.
+
+</details>
+
+<details>
+<summary><strong>Windows (PowerShell)</strong></summary>
+
+```powershell
+# 1. Git, AWS CLI v2 y uv
+winget install -e --id Git.Git
+winget install -e --id Amazon.AWSCLI
+winget install -e --id astral-sh.uv
+
+# 2. Cierra y vuelve a abrir PowerShell, y verifica
+aws --version
+uv --version
+```
+
+Alternativas: el instalador MSI de AWS CLI en https://awscli.amazonaws.com/AWSCLIV2.msi, y para uv `powershell -ExecutionPolicy ByPass -c "irm https://astral.sh/uv/install.ps1 | iex"`.
+
+</details>
+
+### 4.4 Clona el repo y crea los entornos
+
+```bash
+git clone <URL-de-este-repositorio>
+cd <carpeta-del-repositorio>
+```
+
+**Python: entorno virtual y dependencias**
+
+macOS / Linux:
+
+```bash
+python3 -m venv venv
 source venv/bin/activate
-pip install strands-agents
-pip install mcp pydantic      # si no vienen ya como dependencias
+python -m pip install --upgrade pip
+pip install strands-agents mcp pydantic
 ```
 
-**TypeScript**
+Windows (PowerShell):
+
+```powershell
+py -m venv venv
+.\venv\Scripts\Activate.ps1
+python -m pip install --upgrade pip
+pip install strands-agents mcp pydantic
+```
+
+> Si PowerShell dice que la ejecución de scripts está deshabilitada, corre una vez `Set-ExecutionPolicy -Scope CurrentUser -ExecutionPolicy RemoteSigned` y vuelve a activar el entorno. En CMD el comando es `venv\Scripts\activate.bat`.
+
+Sabrás que el entorno está activo porque el prompt empieza con `(venv)`. Tendrás que activarlo en cada terminal nueva.
+
+**TypeScript: dependencias** (igual en los tres sistemas)
+
+Si el repo incluye un `package.json` en la carpeta de TypeScript, basta con:
 
 ```bash
+npm install
+```
+
+Si empiezas una carpeta desde cero:
+
+```bash
+npm init -y
+npm pkg set type=module          # necesario para usar import y await a nivel superior
 npm install @strands-agents/sdk zod @modelcontextprotocol/sdk
 npm install -D tsx typescript
-npx tsx miArchivo.ts
 ```
 
-### Ejemplo mínimo: un agente con un tool
+### 4.5 Configura AWS
+
+**1. Credenciales**
+
+Crea un usuario o rol con permisos para Bedrock (ver abajo) y configura tu terminal:
+
+```bash
+aws configure
+```
+
+Te pedirá: *Access Key ID*, *Secret Access Key*, *región por defecto* (elige donde tengas acceso a Bedrock, por ejemplo `us-east-1`) y *formato de salida* (`json`). Funciona igual en los tres sistemas; las credenciales se guardan en `~/.aws/credentials` (en Windows, `%UserProfile%\.aws\credentials`). Si tu organización usa IAM Identity Center, usa `aws configure sso`, que es preferible a claves de larga duración.
+
+```bash
+aws sts get-caller-identity   # debe devolver tu cuenta y tu usuario o rol
+```
+
+**2. Permisos mínimos de Bedrock** (suficientes para los primeros ejercicios)
+
+```json
+{
+  "Version": "2012-10-17",
+  "Statement": [{
+    "Effect": "Allow",
+    "Action": ["bedrock:InvokeModel", "bedrock:InvokeModelWithResponseStream"],
+    "Resource": "*"
+  }]
+}
+```
+
+Para un uso real, acota `Resource` a los modelos que necesites. Algunos ejercicios (por ejemplo, precios de AWS vía MCP o AgentCore) requieren permisos adicionales; se indican en cada ejercicio.
+
+**3. Acceso al modelo**
+
+Verifica en la consola de Amazon Bedrock que tu cuenta tiene acceso al modelo que vas a usar. Según la cuenta y la región, algunos proveedores (como Anthropic) pueden pedir habilitarlo o llenar un formulario de uso la primera vez. Después lista los identificadores disponibles:
+
+```bash
+aws bedrock list-foundation-models --by-provider anthropic --query "modelSummaries[].modelId" --region us-east-1
+aws bedrock list-inference-profiles --region us-east-1
+```
+
+Algunos modelos solo se pueden invocar con el ID de un **perfil de inferencia** (suelen empezar con `us.` o `global.`). Si usas uno, tu política IAM debe permitirlo.
+
+**4. Variables de entorno**
+
+Los ejemplos del repo leen el modelo de la variable `MODEL_ID`.
+
+macOS / Linux (temporal en la sesión; para que persista agrégalas a `~/.zshrc` o `~/.bashrc`):
+
+```bash
+export MODEL_ID="<tu-model-id-de-bedrock>"
+export AWS_REGION="us-east-1"
+```
+
+Windows (PowerShell):
+
+```powershell
+$env:MODEL_ID = "<tu-model-id-de-bedrock>"       # solo esta sesión
+$env:AWS_REGION = "us-east-1"
+setx MODEL_ID "<tu-model-id-de-bedrock>"          # persistente (aplica a terminales nuevas)
+```
+
+**5. Protege tu repositorio**
+
+Antes de tu primer commit, asegúrate de que `.gitignore` incluya:
+
+```
+venv/
+node_modules/
+.env
+__pycache__/
+```
+
+> Nunca subas credenciales al repositorio. Las claves viven en `~/.aws/`, no en el código.
+
+### 4.6 Verifica tu entorno
+
+El repo incluye dos scripts que comprueban todo lo anterior y hacen una llamada real al modelo.
+
+```bash
+# Python (con el entorno virtual activado)
+python scripts/verificar_entorno.py
+
+# TypeScript (desde la carpeta con tu package.json)
+npx tsx scripts/verificar-entorno.ts
+```
+
+El script de Python revisa versiones de Python, Node.js, AWS CLI y `uv`, que `uvx` esté en el PATH, que el SDK de Strands esté instalado, que tus credenciales funcionen (solo muestra los últimos 4 dígitos de tu cuenta), y que el modelo responda. Si ves `❌`, la sección 4.8 explica los errores más comunes.
+
+### 4.7 Prueba tu primer agente
 
 **Python**
 
 ```python
+import os
 from strands import Agent, tool
 
-MODEL_ID = "<tu-model-id-de-bedrock>"
+MODEL_ID = os.environ["MODEL_ID"]
 
 @tool
 def conversor_moneda(cantidad: float, de: str, a: str) -> str:
@@ -147,7 +355,7 @@ print(agent("¿Cuánto son 250 USD en MXN?"))
 import { Agent, tool } from "@strands-agents/sdk";
 import { z } from "zod";
 
-const MODEL_ID = "<tu-model-id-de-bedrock>";
+const MODEL_ID = process.env.MODEL_ID!;
 const tasasEnMxn = { MXN: 1, USD: 18 } as const;
 
 const conversorMoneda = tool({
@@ -167,11 +375,33 @@ const result = await agent.invoke("¿Cuánto son 250 USD en MXN?");
 console.log(result.lastMessage.content.map((b) => ("text" in b ? b.text : "")).join(""));
 ```
 
+### 4.8 Problemas frecuentes en la Fase 0
+
+| Síntoma | Sistema | Solución |
+|---|---|---|
+| `python` no se reconoce, o abre la Microsoft Store | Windows | Usa `py`. Si falta Python, reinstálalo marcando "Add python.exe to PATH" |
+| "la ejecución de scripts está deshabilitada" al activar el venv | Windows | `Set-ExecutionPolicy -Scope CurrentUser -ExecutionPolicy RemoteSigned` |
+| `No module named venv` o `ensurepip is not available` | Debian / Ubuntu | `sudo apt install python3-venv` |
+| `externally-managed-environment` al usar `pip` | macOS / Linux | No instales en el Python del sistema; crea y activa el `venv` primero |
+| `aws` o `uvx` "command not found" justo después de instalar | Todos | Cierra y abre la terminal. En Linux/macOS, `uv` se instala en `~/.local/bin`: verifica que esté en tu PATH |
+| `NoCredentialsError` | Todos | Corre `aws configure` y confirma con `aws sts get-caller-identity`. Revisa que `AWS_PROFILE` apunte al perfil correcto |
+| `AccessDeniedException` al invocar el modelo | Todos | Revisa permisos IAM, acceso al modelo en Bedrock y que la región sea la correcta |
+| "on-demand throughput isn't supported" | Todos | Usa el ID de un perfil de inferencia (por ejemplo, con prefijo `us.`) en lugar del ID base del modelo |
+| `Top-level await is currently not supported with the "cjs" output format` | Todos | Ejecuta `npm pkg set type=module` en la carpeta de TypeScript |
+| `MODEL_ID` vacío en una terminal nueva | Todos | Las variables con `export` / `$env:` solo duran la sesión; persístelas como se indica en 4.5 |
+
+**Fase 0 completa cuando:** `scripts/verificar_entorno.py` muestra solo `✅` y `scripts/verificar-entorno.ts` responde `ok`.
+
 ---
 
 ## 5. Ruta de aprendizaje
 
 La ruta va de lo simple a lo complejo. Cada fase termina con algo que puedo ejecutar y medir.
+
+### Fase 0: preparación del entorno
+- ✅ Herramientas base (Git, Python, Node.js, AWS CLI v2 y `uv`) en macOS, Linux o Windows
+- ✅ Credenciales de AWS y acceso a un modelo de Amazon Bedrock
+- ✅ Scripts de verificación del entorno (`scripts/`)
 
 ### Fundamentos de un solo agente
 - ✅ Agente con tools propios y encadenamiento de varias llamadas
@@ -306,6 +536,8 @@ Lo aprendido apunta a casos concretos que quiero explorar:
 ## 13. Recursos
 
 - [Strands Agents: sitio y documentación](https://strandsagents.com/)
+- [Instalación de AWS CLI v2](https://docs.aws.amazon.com/cli/latest/userguide/getting-started-install.html)
+- [uv: documentación](https://docs.astral.sh/uv/)
 - [Structured output](https://strandsagents.com/docs/user-guide/concepts/agents/structured-output/)
 - [Herramientas MCP](https://strandsagents.com/docs/user-guide/concepts/tools/mcp-tools/)
 - [Agents as tools](https://strandsagents.com/docs/user-guide/concepts/multi-agent/agents-as-tools/)
