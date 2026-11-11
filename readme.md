@@ -194,7 +194,7 @@ Alternativas: el instalador MSI de AWS CLI en https://awscli.amazonaws.com/AWSCL
 ### 4.4 Clona el repo y crea los entornos
 
 ```bash
-git clone <URL-de-este-repositorio>
+git clone https://github.com/justinXD/agents-repo
 cd <carpeta-del-repositorio>
 ```
 
@@ -281,26 +281,7 @@ aws bedrock list-inference-profiles --region us-east-1
 
 Algunos modelos solo se pueden invocar con el ID de un **perfil de inferencia** (suelen empezar con `us.` o `global.`). Si usas uno, tu política IAM debe permitirlo.
 
-**4. Variables de entorno**
-
-Los ejemplos del repo leen el modelo de la variable `MODEL_ID`.
-
-macOS / Linux (temporal en la sesión; para que persista agrégalas a `~/.zshrc` o `~/.bashrc`):
-
-```bash
-export MODEL_ID="<tu-model-id-de-bedrock>"
-export AWS_REGION="us-east-1"
-```
-
-Windows (PowerShell):
-
-```powershell
-$env:MODEL_ID = "<tu-model-id-de-bedrock>"       # solo esta sesión
-$env:AWS_REGION = "us-east-1"
-setx MODEL_ID "<tu-model-id-de-bedrock>"          # persistente (aplica a terminales nuevas)
-```
-
-**5. Protege tu repositorio**
+**4. Protege tu repositorio**
 
 Antes de tu primer commit, asegúrate de que `.gitignore` incluya:
 
@@ -322,7 +303,7 @@ El repo incluye dos scripts que comprueban todo lo anterior y hacen una llamada 
 python scripts/verificar_entorno.py
 
 # TypeScript (desde la carpeta con tu package.json)
-npx tsx scripts/verificar-entorno.ts
+npx tsx scripts/verificarEntorno.ts
 ```
 
 El script de Python revisa versiones de Python, Node.js, AWS CLI y `uv`, que `uvx` esté en el PATH, que el SDK de Strands esté instalado, que tus credenciales funcionen (solo muestra los últimos 4 dígitos de tu cuenta), y que el modelo responda. Si ves `❌`, la sección 4.8 explica los errores más comunes.
@@ -388,7 +369,6 @@ console.log(result.lastMessage.content.map((b) => ("text" in b ? b.text : "")).j
 | `AccessDeniedException` al invocar el modelo | Todos | Revisa permisos IAM, acceso al modelo en Bedrock y que la región sea la correcta |
 | "on-demand throughput isn't supported" | Todos | Usa el ID de un perfil de inferencia (por ejemplo, con prefijo `us.`) en lugar del ID base del modelo |
 | `Top-level await is currently not supported with the "cjs" output format` | Todos | Ejecuta `npm pkg set type=module` en la carpeta de TypeScript |
-| `MODEL_ID` vacío en una terminal nueva | Todos | Las variables con `export` / `$env:` solo duran la sesión; persístelas como se indica en 4.5 |
 
 **Fase 0 completa cuando:** `scripts/verificar_entorno.py` muestra solo `✅` y `scripts/verificar-entorno.ts` responde `ok`.
 
